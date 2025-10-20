@@ -121,8 +121,9 @@ curl http://localhost:3000/health
 
 ## Interview Tasks
 
-The following tasks should be completed as a take-home assignment. You will have access to this codebase the day before your interview to implement CI/CD workflows using GitHub Actions.
-
+The following tasks should be completed as a take-home assignment. Allocate 30-60 minutes to complete the task.
+You will have access to this codebase the day before your interview to implement CI/CD workflows using GitHub Actions.
+Feel free to fork this repo generate a CI/CD in your forks GitHub actions, alternatively you could use tools like [excalidraw](https://excalidraw.com/) to generate diagrams, write the yaml files, or use pseudo code.
 
 ### Task 1: Continuous Integration (CI) Workflow
 
