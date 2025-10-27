@@ -1,0 +1,72 @@
+name: Continuous Deployment
+
+on:
+  workflow_call:
+
+jobs:
+  deploy-and-verify:
+    name: Deploy and Verify
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      
+      - name: Build Docker image for deployment
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          load: true
+          tags: interview-webapp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Deploy application (mocked)
+        run: |
+          echo "Starting deployment to production..."
+          echo "Deploying Docker image: interview-webapp:latest"
+          
+          # Mock deployment - in real scenario this would be:
+          # - Push to ECR registry
+          # - Deploy to ECS
+          # - Run smoke tests
+          
+          docker run -d --name production-app -p 3000:3000 interview-webapp:latest
+          
+          echo "Waiting for application to start..."
+          sleep 5
+          
+          echo "Running smoke test on /health endpoint..."
+          if curl -f http://localhost:3000/health; then
+            echo "✅ Smoke test passed - deployment successful!"
+          else
+            echo "❌ Smoke test failed - deployment issue detected!"
+            exit 1
+          fi
+          
+          echo "✅ Deployment completed successfully!"
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "Cleaning up failed deployment..."
+          docker stop production-app || true
+          docker rm production-app || true
+
+  notify-failure:
+    name: Notify Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-and-verify]
+    if: failure()
+    steps:
+      - name: Send failure notification (mocked)
+        run: |
+          echo "DEPLOYMENT FAILED!"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          echo "Deploy and verify result: ${{ needs.deploy-and-verify.result }}"
+          echo "Action required: Check workflow logs and fix deployment issue."
