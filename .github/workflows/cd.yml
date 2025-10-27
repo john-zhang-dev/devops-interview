@@ -4,8 +4,8 @@ on:
   workflow_call:
 
 jobs:
-  deploy:
-    name: Deploy to Production
+  deploy-and-verify:
+    name: Deploy and Verify
     runs-on: ubuntu-latest
     
     steps:
@@ -19,15 +19,15 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          push: false
+          load: true
           tags: interview-webapp:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
       - name: Deploy application (mocked)
         run: |
-          echo "🚀 Starting deployment to production..."
-          echo "📦 Deploying Docker image: interview-webapp:latest"
+          echo "Starting deployment to production..."
+          echo "Deploying Docker image: interview-webapp:latest"
           
           # Mock deployment - in real scenario this would be:
           # - Push to ECR registry
@@ -36,76 +36,37 @@ jobs:
           
           docker run -d --name production-app -p 3000:3000 interview-webapp:latest
           
-          echo "⏳ Waiting for application to start..."
-          sleep 10
+          echo "Waiting for application to start..."
+          sleep 5
+          
+          echo "Running smoke test on /health endpoint..."
+          if curl -f http://localhost:3000/health; then
+            echo "✅ Smoke test passed - deployment successful!"
+          else
+            echo "❌ Smoke test failed - deployment issue detected!"
+            exit 1
+          fi
           
           echo "✅ Deployment completed successfully!"
 
-  post-deployment-verification:
-    name: Post-Deployment Verification
-    runs-on: ubuntu-latest
-    needs: deploy
-    
-    steps:
-      - name: Health check verification
-        run: |
-          echo "🔍 Starting post-deployment verification..."
-          
-          # Wait for application to be ready
-          sleep 15
-          
-          echo "🏥 Testing health endpoint..."
-          if curl -f http://localhost:3000/health; then
-            echo "✅ Health check passed!"
-          else
-            echo "❌ Health check failed!"
-            exit 1
-          fi
-          
-          echo "🌍 Testing main endpoint..."
-          if curl -f http://localhost:3000/; then
-            echo "✅ Application verification completed successfully!"
-          else
-            echo "❌ Main endpoint check failed!"
-            exit 1
-          fi
-
-      - name: Cleanup on verification failure
+      - name: Cleanup on failure
         if: failure()
         run: |
-          echo "🧹 Cleaning up failed deployment..."
+          echo "Cleaning up failed deployment..."
           docker stop production-app || true
           docker rm production-app || true
 
   notify-failure:
     name: Notify Deployment Failure
     runs-on: ubuntu-latest
-    needs: [deploy, post-deployment-verification]
+    needs: [deploy-and-verify]
     if: failure()
     steps:
-      - name: Send failure notification
+      - name: Send failure notification (mocked)
         run: |
-          echo "🚨 DEPLOYMENT FAILED!"
+          echo "DEPLOYMENT FAILED!"
           echo "Repository: ${{ github.repository }}"
           echo "Commit: ${{ github.sha }}"
           echo "Author: ${{ github.actor }}"
-          echo "Deploy result: ${{ needs.deploy.result }}"
-          echo "Verification result: ${{ needs.post-deployment-verification.result }}"
+          echo "Deploy and verify result: ${{ needs.deploy-and-verify.result }}"
           echo "Action required: Check workflow logs and fix deployment issue."
-
-  cleanup:
-    name: Cleanup Resources
-    runs-on: ubuntu-latest
-    needs: [deploy, post-deployment-verification]
-    if: always()
-    
-    steps:
-      - name: Clean up deployment resources
-        run: |
-          echo "🧹 Cleaning up deployment resources..."
-          
-          # Stop and remove the container (this is just for the mock deployment)
-          docker stop production-app || echo "Container was not running"
-          docker rm production-app || echo "Container was already removed"
-          
-          echo "✅ Cleanup completed"
