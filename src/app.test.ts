@@ -5,7 +5,7 @@ describe('Web App', () => {
   describe('GET /', () => {
     it('should return Hello World', async () => {
       const response = await request(app).get('/');
-      throw new Error('Test error');
+
       expect(response.status).toBe(200);
       expect(response.text).toBe('Hello World');
     });
